@@ -1,0 +1,55 @@
+diff --git a/nandtest.c- b/nandtest.c
+index 0187b87..8e7a79b 100644
+--- a/nandtest.c-
++++ b/nandtest.c
+@@ -22,6 +22,7 @@ void usage(void)
+ 	fprintf(stderr, "usage: %s [OPTIONS] <device>\n\n"
+ 		"  -h, --help           Display this help output\n"
+ 		"  -m, --markbad        Mark blocks bad if they appear so\n"
++		"  -M, --markallbad     Mark blocks bad if any ECC corrections are done\n"
+ 		"  -s, --seed           Supply random seed\n"
+ 		"  -p, --passes         Number of passes\n"
+ 		"  -o, --offset         Start offset on flash\n"
+@@ -102,10 +103,18 @@ int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf)
+ 				newstats.corrected - oldstats.corrected,
+ 				(unsigned) ofs);
+ 		oldstats.corrected = newstats.corrected;
++		if (markbad > 1) {
++			printf("Mark block bad at %08lx\n", (long)ofs);
++			ioctl(fd, MEMSETBADBLOCK, &ofs);
++		}
+ 	}
+ 	if (newstats.failed > oldstats.failed) {
+ 		printf("\nECC failed at %08x\n", (unsigned) ofs);
+ 		oldstats.failed = newstats.failed;
++		if (markbad > 1) {
++			printf("Mark block bad at %08lx\n", (long)ofs);
++			ioctl(fd, MEMSETBADBLOCK, &ofs);
++		}
+ 	}
+ 	if (len < meminfo.erasesize)
+ 		exit(1);
+@@ -143,10 +152,11 @@ int main(int argc, char **argv)
+ 	seed = time(NULL);
+ 
+ 	for (;;) {
+-		static const char *short_options="hkl:mo:p:s:";
++		static const char *short_options="hkl:mMo:p:s:";
+ 		static const struct option long_options[] = {
+ 			{ "help", no_argument, 0, 'h' },
+ 			{ "markbad", no_argument, 0, 'm' },
++			{ "markallbad", no_argument, 0, 'M' },
+ 			{ "seed", required_argument, 0, 's' },
+ 			{ "passes", required_argument, 0, 'p' },
+ 			{ "offset", required_argument, 0, 'o' },
+@@ -169,6 +179,10 @@ int main(int argc, char **argv)
+ 			markbad = 1;
+ 			break;
+ 
++		case 'M':
++			markbad = 2;
++			break;
++
+ 		case 'k':
+ 			keep_contents = 1;
+ 			break;
